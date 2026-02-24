@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_CREDENTIALS = 'dockerhub'
+        DOCKER_IMAGE = 'sathiyagph/trend-app'
+        AWS_REGION = 'ap-south-1'
+        CLUSTER_NAME = 'trend-cluster'
+    }
+
+    stages {
+
+        stage('Clone Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/gsathiya91/trend.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE:latest .'
+            }
+        }
+
+        stage('Login to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "$DOCKERHUB_CREDENTIALS",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Push Image to DockerHub') {
+            steps {
+                sh 'docker push $DOCKER_IMAGE:latest'
+            }
+        }
+
+        stage('Deploy to EKS') {
+            steps {
+                sh '''
+                aws eks --region $AWS_REGION update-kubeconfig --name $CLUSTER_NAME
+                kubectl apply -f deployment.yml
+                kubectl apply -f service.yml
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Application successfully deployed to EKS 🚀'
+        }
+        failure {
+            echo 'Pipeline failed ❌ Check console output'
+        }
+    }
+}

@@ -1,0 +1,16 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+# AWS & Kubernetes secrets
+kubeconfig
+*.pem
+*.key
+
+# Docker
+docker-compose.override.yml
+
+# Jenkins
+workspace/
